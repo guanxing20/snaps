@@ -37,6 +37,28 @@ describe('WrappedSnapError', () => {
     });
   });
 
+  it('wraps an error without a stack', () => {
+    const error = new Error('foo');
+    delete error.stack;
+
+    const wrapped = new WrappedSnapError(error);
+
+    expect(wrapped).toBeInstanceOf(Error);
+    expect(wrapped).toBeInstanceOf(WrappedSnapError);
+    expect(wrapped.name).toBe('WrappedSnapError');
+    expect(wrapped.message).toBe('foo');
+    expect(wrapped.stack).toBeDefined();
+    expect(wrapped.toJSON()).toStrictEqual({
+      code: SNAP_ERROR_WRAPPER_CODE,
+      message: SNAP_ERROR_WRAPPER_MESSAGE,
+      data: {
+        cause: {
+          message: 'foo',
+        },
+      },
+    });
+  });
+
   it('wraps a JSON-RPC error', () => {
     const error = new JsonRpcError(-1, 'foo');
     const wrapped = new WrappedSnapError(error);
@@ -276,5 +298,50 @@ describe('unwrapError', () => {
     expect(unwrappedError.message).toBe('foo');
     expect(unwrappedError.stack).toBeDefined();
     expect(handled).toBe(false);
+  });
+
+  it('unwraps an error without a stack', () => {
+    const error = new Error('foo');
+    delete error.stack;
+
+    const [unwrappedError, handled] = unwrapError(error);
+
+    expect(unwrappedError).toBeInstanceOf(Error);
+    expect(unwrappedError.code).toBe(errorCodes.rpc.internal);
+    expect(unwrappedError.message).toBe('foo');
+    expect(unwrappedError.stack).toBeUndefined();
+    expect(handled).toBe(false);
+  });
+
+  it('unwraps double wrapped JSON-RPC errors', () => {
+    const error = new JsonRpcError(-31001, 'Wrapped Snap Error', {
+      cause: {
+        code: -32603,
+        message: 'Invalid URL: Unable to parse URL.',
+        data: {
+          cause: {
+            message: 'Invalid URL: Unable to parse URL.',
+            stack: `Error: Invalid URL: Unable to parse URL.
+      at validateLink (chrome-extension://oghgfmogdanabdcdccbeoodiboikbejn/common-4.js:11793:15)
+      at chrome-extension://oghgfmogdanabdcdccbeoodiboikbejn/common-4.js:11842:17
+      at walkJsx (chrome-extension://oghgfmogdanabdcdccbeoodiboikbejn/common-4.js:11936:20)
+      at walkJsx (chrome-extension://oghgfmogdanabdcdccbeoodiboikbejn/common-4.js:11946:37)
+      at validateJsxElements (chrome-extension://oghgfmogdanabdcdccbeoodiboikbejn/common-4.js:11839:5)
+      at SnapInterfaceController._SnapInterfaceController_validateContent (chrome-extension://oghgfmogdanabdcdccbeoodiboikbejn/background-5.js:21741:43)
+      at SnapInterfaceController.createInterface (chrome-extension://oghgfmogdanabdcdccbeoodiboikbejn/background-5.js:21585:127)
+      at Messenger.call (chrome-extension://oghgfmogdanabdcdccbeoodiboikbejn/common-1.js:14706:16)
+      at dialogImplementation (chrome-extension://oghgfmogdanabdcdccbeoodiboikbejn/common-4.js:1988:30)
+      at PermissionController._executeRestrictedMethod (chrome-extension://oghgfmogdanabdcdccbeoodiboikbejn/common-3.js:23611:111)`,
+          },
+        },
+      },
+    });
+
+    const [unwrappedError, handled] = unwrapError(error);
+    expect(handled).toBe(false);
+    expect(unwrappedError.message).toBe('Invalid URL: Unable to parse URL.');
+    expect(unwrappedError.stack).toStrictEqual(
+      expect.stringContaining('PermissionController._executeRestrictedMethod'),
+    );
   });
 });

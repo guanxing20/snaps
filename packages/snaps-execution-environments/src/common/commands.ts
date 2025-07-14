@@ -19,6 +19,8 @@ import {
   assertIsOnAssetsConversionRequestArguments,
   assertIsOnProtocolRequestArguments,
   assertIsOnAssetHistoricalPriceRequestArguments,
+  assertIsOnWebSocketEventArguments,
+  assertIsOnAssetsMarketDataRequestArguments,
 } from './validation';
 
 export type CommandMethodsMapping = {
@@ -74,9 +76,16 @@ export function getHandlerArguments(
     }
     case HandlerType.OnAssetsConversion: {
       assertIsOnAssetsConversionRequestArguments(request.params);
-      const { conversions, includeMarketData } = request.params;
-      return { conversions, includeMarketData };
+      const { conversions } = request.params;
+      return { conversions };
     }
+
+    case HandlerType.OnAssetsMarketData: {
+      assertIsOnAssetsMarketDataRequestArguments(request.params);
+      const { assets } = request.params;
+      return { assets };
+    }
+
     case HandlerType.OnNameLookup: {
       assertIsOnNameLookupRequestArguments(request.params);
 
@@ -103,6 +112,12 @@ export function getHandlerArguments(
       return { origin, request: nestedRequest, scope };
     }
 
+    case HandlerType.OnWebSocketEvent: {
+      assertIsOnWebSocketEventArguments(request.params);
+      const { event } = request.params;
+      return { event };
+    }
+
     case HandlerType.OnRpcRequest:
     case HandlerType.OnKeyringRequest:
       return { origin, request };
@@ -113,6 +128,7 @@ export function getHandlerArguments(
 
     case HandlerType.OnInstall:
     case HandlerType.OnUpdate:
+    case HandlerType.OnStart:
       return { origin };
 
     case HandlerType.OnHomePage:

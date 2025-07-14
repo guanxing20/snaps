@@ -35,6 +35,7 @@ export enum HandlerType {
   OnCronjob = 'onCronjob',
   OnInstall = 'onInstall',
   OnUpdate = 'onUpdate',
+  OnStart = 'onStart',
   OnNameLookup = 'onNameLookup',
   OnKeyringRequest = 'onKeyringRequest',
   OnHomePage = 'onHomePage',
@@ -43,8 +44,10 @@ export enum HandlerType {
   OnAssetsLookup = 'onAssetsLookup',
   OnAssetsConversion = 'onAssetsConversion',
   OnAssetHistoricalPrice = 'onAssetHistoricalPrice',
+  OnAssetsMarketData = 'onAssetsMarketData',
   OnProtocolRequest = 'onProtocolRequest',
   OnClientRequest = 'onClientRequest',
+  OnWebSocketEvent = 'onWebSocketEvent',
 }
 
 export type SnapHandler = {

@@ -7,9 +7,13 @@ import {
   SnapInterfaceController,
 } from '@metamask/snaps-controllers/node';
 import { DIALOG_APPROVAL_TYPES } from '@metamask/snaps-rpc-methods';
+import type { CaipAssetType, CaipChainId } from '@metamask/snaps-sdk';
 import { AuxiliaryFileEncoding, text } from '@metamask/snaps-sdk';
 import { VirtualFile } from '@metamask/snaps-utils';
-import { getSnapManifest } from '@metamask/snaps-utils/test-utils';
+import {
+  getSnapManifest,
+  MOCK_SNAP_ID,
+} from '@metamask/snaps-utils/test-utils';
 
 import { DEFAULT_SRP } from './constants';
 import {
@@ -25,6 +29,7 @@ import {
   getRestrictedSnapInterfaceControllerMessenger,
   getRootControllerMessenger,
 } from './test-utils';
+import { addSnapMetadataToAccount } from './utils/account';
 
 describe('installSnap', () => {
   it('installs a Snap and returns the execution service', async () => {
@@ -651,11 +656,48 @@ describe('getPermittedHooks', () => {
 });
 
 describe('registerActions', () => {
-  const { runSaga, store } = createStore(getMockOptions());
+  const mockedAssets = {
+    'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:105': {
+      name: 'Solana',
+      symbol: 'SOL',
+    },
+    'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/token:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v':
+      {
+        name: 'USDC',
+        symbol: 'USDC',
+      },
+  };
+
+  const mockedAccounts = [
+    {
+      id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
+      selected: true,
+      address: '7S3P4HxJpyyigGzodYwHtCxZyUQe9JiBMHyRWXArAaKv',
+      name: 'My Solana Account',
+      scopes: ['solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'] as CaipChainId[],
+      assets: [
+        'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:105',
+        'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/token:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+      ] as CaipAssetType[],
+    },
+    {
+      id: '4748765d-4e55-4a8a-ace1-fc0316f6cbeb',
+      address: 'DYw8jCTfwHNRJhhmFcbXvVDTqWMEVFBX6ZKUmG5CNSKK',
+      name: 'My Solana Account 2',
+      scopes: ['solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'] as CaipChainId[],
+    },
+  ];
+
+  const options = getMockOptions({
+    accounts: mockedAccounts,
+    assets: mockedAssets,
+  });
+
+  const { runSaga, store } = createStore(options);
   const controllerMessenger = getRootControllerMessenger(false);
 
   it('registers `PhishingController:testOrigin`', async () => {
-    registerActions(controllerMessenger, runSaga);
+    registerActions(controllerMessenger, runSaga, options, MOCK_SNAP_ID);
 
     expect(
       controllerMessenger.call('PhishingController:testOrigin', 'foo'),
@@ -663,7 +705,7 @@ describe('registerActions', () => {
   });
 
   it('registers `ApprovalController:hasRequest`', async () => {
-    registerActions(controllerMessenger, runSaga);
+    registerActions(controllerMessenger, runSaga, options, MOCK_SNAP_ID);
 
     store.dispatch(
       setInterface({ type: DIALOG_APPROVAL_TYPES.default, id: 'foo' }),
@@ -675,7 +717,7 @@ describe('registerActions', () => {
   });
 
   it('registers `ApprovalController:acceptRequest`', async () => {
-    registerActions(controllerMessenger, runSaga);
+    registerActions(controllerMessenger, runSaga, options, MOCK_SNAP_ID);
 
     store.dispatch(
       setInterface({ type: DIALOG_APPROVAL_TYPES.default, id: 'foo' }),
@@ -688,5 +730,71 @@ describe('registerActions', () => {
         'bar',
       ),
     ).toStrictEqual({ value: 'bar' });
+  });
+
+  it('registers `AccountsController:getAccountByAddress`', async () => {
+    registerActions(controllerMessenger, runSaga, options, MOCK_SNAP_ID);
+
+    expect(
+      controllerMessenger.call(
+        'AccountsController:getAccountByAddress',
+        mockedAccounts[0].address,
+      ),
+    ).toStrictEqual(addSnapMetadataToAccount(mockedAccounts[0], MOCK_SNAP_ID));
+
+    expect(
+      controllerMessenger.call('AccountsController:getAccountByAddress', 'foo'),
+    ).toBeUndefined();
+  });
+
+  it('registers `AccountsController:getSelectedMultichainAccount`', async () => {
+    registerActions(controllerMessenger, runSaga, options, MOCK_SNAP_ID);
+
+    expect(
+      controllerMessenger.call(
+        'AccountsController:getSelectedMultichainAccount',
+      ),
+    ).toStrictEqual(addSnapMetadataToAccount(mockedAccounts[0], MOCK_SNAP_ID));
+  });
+
+  it('returns `undefined` in `AccountsController:getSelectedMultichainAccount` if no account is selected', async () => {
+    registerActions(
+      controllerMessenger,
+      runSaga,
+      { ...options, accounts: [] },
+      MOCK_SNAP_ID,
+    );
+
+    expect(
+      controllerMessenger.call(
+        'AccountsController:getSelectedMultichainAccount',
+      ),
+    ).toBeUndefined();
+  });
+
+  it('registers `AccountsController:listMultichainAccounts`', async () => {
+    registerActions(controllerMessenger, runSaga, options, MOCK_SNAP_ID);
+
+    expect(
+      controllerMessenger.call('AccountsController:listMultichainAccounts'),
+    ).toStrictEqual(
+      mockedAccounts.map((account) =>
+        addSnapMetadataToAccount(account, MOCK_SNAP_ID),
+      ),
+    );
+  });
+
+  it('registers `MultichainAssetsController:getState`', async () => {
+    registerActions(controllerMessenger, runSaga, options, MOCK_SNAP_ID);
+
+    expect(
+      controllerMessenger.call('MultichainAssetsController:getState'),
+    ).toStrictEqual({
+      assetsMetadata: mockedAssets,
+      accountsAssets: {
+        [mockedAccounts[0].id]: mockedAccounts[0].assets,
+        [mockedAccounts[1].id]: [],
+      },
+    });
   });
 });

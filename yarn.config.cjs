@@ -148,20 +148,18 @@ module.exports = defineConfig({
 
         // All non-root package must have valid "changelog:update" and
         // "changelog:validate" scripts.
-        expectWorkspaceField(
-          workspace,
-          'scripts.changelog:validate',
-          `${getRelativePath(workspace, 'scripts/validate-changelog.sh')} ${
-            workspace.manifest.name
-          }`,
-        );
-        expectWorkspaceField(
-          workspace,
-          'scripts.changelog:validate',
-          `${getRelativePath(workspace, 'scripts/validate-changelog.sh')} ${
-            workspace.manifest.name
-          }`,
-        );
+        if (
+          workspace.cwd !== 'packages/examples' &&
+          workspace.cwd !== 'packages/examples/packages/invoke-snap'
+        ) {
+          expectWorkspaceField(
+            workspace,
+            'scripts.changelog:validate',
+            `${getRelativePath(workspace, 'scripts/validate-changelog.sh')} ${
+              workspace.manifest.name
+            }`,
+          );
+        }
 
         // All non-root packages must have a valid "since-latest-release" script.
         expectWorkspaceField(
@@ -246,7 +244,7 @@ module.exports = defineConfig({
       }
 
       // All packages must specify a minimum Node.js version of 18.18.
-      expectWorkspaceField(workspace, 'engines.node', '^18.16 || >=20');
+      expectWorkspaceField(workspace, 'engines.node', '^20 || >=22');
 
       // All non-root public packages should be published to the NPM registry;
       // all non-root private packages should not.

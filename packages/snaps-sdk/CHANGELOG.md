@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [9.2.0]
+
+### Added
+
+- Add types for non-fungible assets in `endowment:assets` ([#3527](https://github.com/MetaMask/snaps/pull/3527))
+- Allow all children in `Row` ([#3532](https://github.com/MetaMask/snaps/pull/3532))
+
+## [9.1.0]
+
+### Added
+
+- Add `snap_startTrace` and `snap_endTrace` methods for performance tracing ([#3519](https://github.com/MetaMask/snaps/pull/3519))
+
+## [9.0.0]
+
+### Added
+
+- **BREAKING:** Market data is now fetched through `onAssetsMarketData` instead
+  of `onAssetConversion` ([#3496](https://github.com/MetaMask/snaps/pull/3496))
+  - Previously, `onAssetConversion` could return a `marketData` property, which
+    contained market data for the asset being converted. This property
+    has been removed, and `onAssetsMarketData` should be used instead.
+  - The `MarketData` type has been replaced with `FungibleAssetMarketData`.
+- Add `snap_trackError` method for error tracking through Sentry ([#3498](https://github.com/MetaMask/snaps/pull/3498))
+
+## [8.1.0]
+
+### Added
+
+- Add WebSockets support ([#3450](https://github.com/MetaMask/snaps/pull/3450), [#3459](https://github.com/MetaMask/snaps/pull/3459))
+  - This introduces types for the `onWebSocketEvent` handler which receives
+    events from `WebSocketService`.
+- Add types for `onStart` handler ([#3455](https://github.com/MetaMask/snaps/pull/3455))
+
+## [8.0.0]
+
+### Added
+
+- Support scheduling cronjobs with an ISO 8601 duration ([#3421](https://github.com/MetaMask/snaps/pull/3421))
+  - Instead of using a cron expression, you can now use a duration string to
+    schedule a cronjob. This is useful for scheduling recurring events that are
+    not based on a specific time of day.
+  - To schedule a cronjob with a duration, use `duration` instead of
+    `expression` in the Snap manifest.
+
+### Changed
+
+- **BREAKING:** Drop support for Node.js 18 and 21 ([#3447](https://github.com/MetaMask/snaps/pull/3447))
+
+### Fixed
+
+- Allow `AccountSelector` in `Field` and add `disabled` prop. ([#3430](https://github.com/MetaMask/snaps/pull/3430))
+
 ## [7.1.0]
 
 ### Added
@@ -513,7 +566,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve support for Snap errors without a message ([#2176](https://github.com/MetaMask/snaps/pull/2176))
   - You can now add data to an error without having to specify a message. For example:
     ```ts
-    throw new MethodNotFoundError({ method: "some method name" });
+    throw new MethodNotFoundError({ method: 'some method name' });
     ```
 - Strip empty `data` from Snap errors ([#2179](https://github.com/MetaMask/snaps/pull/2179))
 
@@ -585,7 +638,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release of this package.
 
-[Unreleased]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-sdk@7.1.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-sdk@9.2.0...HEAD
+[9.2.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-sdk@9.1.0...@metamask/snaps-sdk@9.2.0
+[9.1.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-sdk@9.0.0...@metamask/snaps-sdk@9.1.0
+[9.0.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-sdk@8.1.0...@metamask/snaps-sdk@9.0.0
+[8.1.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-sdk@8.0.0...@metamask/snaps-sdk@8.1.0
+[8.0.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-sdk@7.1.0...@metamask/snaps-sdk@8.0.0
 [7.1.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-sdk@7.0.0...@metamask/snaps-sdk@7.1.0
 [7.0.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-sdk@6.24.0...@metamask/snaps-sdk@7.0.0
 [6.24.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-sdk@6.23.0...@metamask/snaps-sdk@6.24.0

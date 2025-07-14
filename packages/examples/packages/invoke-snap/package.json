@@ -22,7 +22,6 @@
   "scripts": {
     "build": "yarn workspaces foreach --worktree --parallel --verbose run build",
     "build:clean": "yarn clean && yarn build",
-    "changelog:validate": "../../../../scripts/validate-changelog.sh @metamask/invoke-snap-example-snap",
     "clean": "yarn workspaces foreach --worktree --parallel --verbose run clean",
     "lint": "yarn workspaces foreach --worktree --parallel --verbose --interlaced run lint && yarn lint:dependencies",
     "lint:ci": "yarn lint:eslint && yarn lint:misc --check",
@@ -39,7 +38,7 @@
     "test:watch": "jest --watch"
   },
   "devDependencies": {
-    "@lavamoat/allow-scripts": "^3.3.3",
+    "@lavamoat/allow-scripts": "^3.3.4",
     "@metamask/auto-changelog": "^5.0.2",
     "@types/node": "18.14.2",
     "depcheck": "^1.4.7",
@@ -50,6 +49,6 @@
     "typescript": "~5.3.3"
   },
   "engines": {
-    "node": "^18.16 || >=20"
+    "node": "^20 || >=22"
   }
 }

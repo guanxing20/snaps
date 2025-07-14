@@ -159,6 +159,13 @@ export type SnapHelpers = {
   onUpdate(request?: Pick<RequestOptions, 'origin'>): SnapRequest;
 
   /**
+   * Get the response from the Snap's `onStart` handler.
+   *
+   * @returns The response.
+   */
+  onStart(request?: Pick<RequestOptions, 'origin'>): SnapRequest;
+
+  /**
    * Get the response from the Snap's `onNameLookup` handler.
    *
    * @returns The response.
@@ -179,6 +186,14 @@ export type SnapHelpers = {
     scope: CaipChainId,
     request: RequestOptions,
   ): Promise<SnapResponseWithoutInterface>;
+
+  /**
+   * Send a JSON-RPC client request to the Snap.
+   *
+   * @param request - The JSON-RPC request.
+   * @returns The response promise, with extra {@link SnapRequestObject} fields.
+   */
+  onClientRequest(request: Omit<RequestOptions, 'origin'>): SnapRequest;
 
   /**
    * Mock a JSON-RPC request. This will cause the snap to respond with the
@@ -252,6 +267,7 @@ export function getHelpers({
       executionService,
       runSaga,
       controllerMessenger,
+      simulationOptions: options,
       handler: HandlerType.OnTransaction,
       request: {
         method: '',
@@ -278,6 +294,7 @@ export function getHelpers({
       store,
       executionService,
       controllerMessenger,
+      simulationOptions: options,
       runSaga,
       handler: HandlerType.OnCronjob,
       request,
@@ -295,6 +312,7 @@ export function getHelpers({
       executionService,
       runSaga,
       controllerMessenger,
+      simulationOptions: options,
       handler: HandlerType.OnKeyringRequest,
       request,
     });
@@ -311,6 +329,7 @@ export function getHelpers({
         store,
         executionService,
         controllerMessenger,
+        simulationOptions: options,
         runSaga,
         handler: HandlerType.OnRpcRequest,
         request,
@@ -332,6 +351,7 @@ export function getHelpers({
         store,
         executionService,
         controllerMessenger,
+        simulationOptions: options,
         runSaga,
         handler: HandlerType.OnInstall,
         request: {
@@ -351,8 +371,29 @@ export function getHelpers({
         store,
         executionService,
         controllerMessenger,
+        simulationOptions: options,
         runSaga,
         handler: HandlerType.OnUpdate,
+        request: {
+          method: '',
+          ...request,
+        },
+      });
+    },
+
+    // This can't be async because it returns a `SnapRequest`.
+    // eslint-disable-next-line @typescript-eslint/promise-function-async
+    onStart: (request?: Pick<RequestOptions, 'origin'>) => {
+      log('Running onStart handler.');
+
+      return handleRequest({
+        snapId,
+        store,
+        executionService,
+        controllerMessenger,
+        simulationOptions: options,
+        runSaga,
+        handler: HandlerType.OnStart,
         request: {
           method: '',
           ...request,
@@ -372,6 +413,7 @@ export function getHelpers({
         store,
         executionService,
         controllerMessenger,
+        simulationOptions: options,
         runSaga,
         handler: HandlerType.OnNameLookup,
         request: {
@@ -398,6 +440,7 @@ export function getHelpers({
         store,
         executionService,
         controllerMessenger,
+        simulationOptions: options,
         runSaga,
         handler: HandlerType.OnSignature,
         request: {
@@ -426,6 +469,7 @@ export function getHelpers({
         store,
         executionService,
         controllerMessenger,
+        simulationOptions: options,
         runSaga,
         handler: HandlerType.OnHomePage,
         request: {
@@ -446,6 +490,7 @@ export function getHelpers({
         store,
         executionService,
         controllerMessenger,
+        simulationOptions: options,
         runSaga,
         handler: HandlerType.OnSettingsPage,
         request: {
@@ -476,6 +521,7 @@ export function getHelpers({
         store,
         executionService,
         controllerMessenger,
+        simulationOptions: options,
         runSaga,
         handler: HandlerType.OnProtocolRequest,
         request: {
@@ -489,6 +535,23 @@ export function getHelpers({
       });
 
       return response;
+    },
+
+    // This can't be async because it returns a `SnapRequest`.
+    // eslint-disable-next-line @typescript-eslint/promise-function-async
+    onClientRequest: (request) => {
+      log('Sending client request.');
+
+      return handleRequest({
+        snapId,
+        store,
+        executionService,
+        controllerMessenger,
+        simulationOptions: options,
+        runSaga,
+        handler: HandlerType.OnClientRequest,
+        request,
+      });
     },
 
     mockJsonRpc(mock: JsonRpcMockOptions) {

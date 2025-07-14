@@ -1,6 +1,6 @@
 {
   "name": "@metamask/example-snaps",
-  "version": "3.22.0",
+  "version": "3.24.0",
   "private": true,
   "description": "A collection of examples demonstrating how to build MetaMask Snaps",
   "keywords": [
@@ -22,7 +22,6 @@
   "scripts": {
     "build": "yarn workspaces filter --include 'packages/examples/packages/**' --parallel --no-private run build",
     "build:clean": "yarn clean && yarn build",
-    "changelog:validate": "../../scripts/validate-changelog.sh @metamask/example-snaps",
     "changelog:validates": "yarn workspaces foreach --worktree --parallel --verbose run changelog:validate",
     "clean": "yarn workspaces foreach --worktree --parallel --verbose --no-private run clean",
     "lint": "yarn workspaces foreach --worktree --parallel --verbose --interlaced --no-private run lint && yarn lint:dependencies",
@@ -41,7 +40,7 @@
     "test:watch": "jest --watch"
   },
   "devDependencies": {
-    "@lavamoat/allow-scripts": "^3.3.3",
+    "@lavamoat/allow-scripts": "^3.3.4",
     "@metamask/auto-changelog": "^5.0.2",
     "@types/node": "18.14.2",
     "depcheck": "^1.4.7",
@@ -52,6 +51,6 @@
     "typescript": "~5.3.3"
   },
   "engines": {
-    "node": "^18.16 || >=20"
+    "node": "^20 || >=22"
   }
 }

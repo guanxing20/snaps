@@ -17,7 +17,6 @@ import {
   isObject,
   isValidSemVerVersion,
 } from '@metamask/utils';
-import { createGunzip } from 'browserify-zlib';
 import concat from 'concat-stream';
 import getNpmTarballUrl from 'get-npm-tarball-url';
 import { pipeline } from 'readable-stream';
@@ -249,25 +248,11 @@ export class NpmLocation extends BaseNpmLocation {
       // The "gz" in "tgz" stands for "gzip". The tarball needs to be decompressed
       // before we can actually grab any files from it.
       // To prevent recursion-based zip bombs, we should not allow recursion here.
-
-      // If native decompression stream is available we use that, otherwise fallback to zlib.
-      if ('pipeThrough' in body && 'DecompressionStream' in globalThis) {
-        const decompressionStream = new DecompressionStream('gzip');
-        const decompressedStream = body.pipeThrough(decompressionStream);
-
-        pipeline(
-          getNodeStream(decompressedStream),
-          tarballStream,
-          (error: unknown) => {
-            error ? reject(error) : resolve(files);
-          },
-        );
-        return;
-      }
+      const decompressionStream = new DecompressionStream('gzip');
+      const decompressedStream = body.pipeThrough(decompressionStream);
 
       pipeline(
-        getNodeStream(body),
-        createGunzip(),
+        getNodeStream(decompressedStream),
         tarballStream,
         (error: unknown) => {
           error ? reject(error) : resolve(files);
@@ -458,7 +443,7 @@ function createTarballStream(
 
   let totalSize = 0;
 
-  // "entry" is fired for every discreet entity in the tarball. This includes
+  // "entry" is fired for every discrete entity in the tarball. This includes
   // files and folders.
   extractStream.on('entry', (header, entryStream, next) => {
     const { name: headerName, type: headerType } = header;

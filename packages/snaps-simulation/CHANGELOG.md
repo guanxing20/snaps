@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0]
+
+### Added
+
+- Add Snap metadata to simulated accounts ([#3528](https://github.com/MetaMask/snaps/pull/3528))
+
+## [3.2.0]
+
+### Added
+
+- Add support for `AssetSelector` and `AccountSelector` ([#3462](https://github.com/MetaMask/snaps/pull/3462))
+
+## [3.1.0]
+
+### Added
+
+- Add support for `onStart` ([#3455](https://github.com/MetaMask/snaps/pull/3455))
+
+## [3.0.0]
+
+### Added
+
+- Add support for `onClientRequest` ([#3445](https://github.com/MetaMask/snaps/pull/3445))
+
+### Changed
+
+- **BREAKING:** Drop support for Node.js 18 and 21 ([#3447](https://github.com/MetaMask/snaps/pull/3447))
+- Bump `@metamask/eth-json-rpc-middleware` from `17.0.0` to `17.0.1` ([#3427](https://github.com/MetaMask/snaps/pull/3427))
+
 ## [2.7.0]
 
 ### Added
@@ -167,7 +196,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial release of `@metamask/snaps-simulation` package ([#2727](https://github.com/MetaMask/snaps/pull/2727))
 
-[Unreleased]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-simulation@2.7.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-simulation@3.3.0...HEAD
+[3.3.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-simulation@3.2.0...@metamask/snaps-simulation@3.3.0
+[3.2.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-simulation@3.1.0...@metamask/snaps-simulation@3.2.0
+[3.1.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-simulation@3.0.0...@metamask/snaps-simulation@3.1.0
+[3.0.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-simulation@2.7.0...@metamask/snaps-simulation@3.0.0
 [2.7.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-simulation@2.6.0...@metamask/snaps-simulation@2.7.0
 [2.6.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-simulation@2.5.0...@metamask/snaps-simulation@2.6.0
 [2.5.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-simulation@2.4.1...@metamask/snaps-simulation@2.5.0

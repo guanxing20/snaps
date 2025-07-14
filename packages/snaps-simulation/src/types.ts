@@ -150,10 +150,10 @@ export type SnapInterfaceActions = {
   selectFromRadioGroup(name: string, value: string): Promise<void>;
 
   /**
-   * Choose an option with a value from Selector component.
+   * Choose an option with a value from a Selector, AccountSelector or AssetSelector component.
    *
    * @param name - The element name to type in.
-   * @param value - The value to type.
+   * @param value - The value to select.
    */
   selectFromSelector(name: string, value: string): Promise<void>;
 
@@ -493,6 +493,13 @@ export type Snap = {
   onUpdate(request?: Pick<RequestOptions, 'origin'>): SnapRequest;
 
   /**
+   * Get the response from the Snap's `onStart` handler.
+   *
+   * @returns The response.
+   */
+  onStart(request?: Pick<RequestOptions, 'origin'>): SnapRequest;
+
+  /**
    * Get the response from the Snap's `onNameLookup` handler.
    *
    * @returns The response.
@@ -513,6 +520,14 @@ export type Snap = {
     scope: CaipChainId,
     request: RequestOptions,
   ): Promise<SnapResponseWithoutInterface>;
+
+  /**
+   * Send a JSON-RPC client request to the Snap.
+   *
+   * @param request - The JSON-RPC request.
+   * @returns The response promise, with extra {@link SnapRequestObject} fields.
+   */
+  onClientRequest(request: Omit<RequestOptions, 'origin'>): SnapRequest;
 
   /**
    * Mock a JSON-RPC request. This will cause the snap to respond with the

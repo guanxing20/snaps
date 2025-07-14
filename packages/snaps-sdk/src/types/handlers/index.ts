@@ -1,5 +1,6 @@
 export type * from './asset-historical-price';
 export type * from './assets-conversion';
+export type * from './assets-market-data';
 export * from './assets-lookup';
 export type * from './client-request';
 export type * from './cronjob';
@@ -13,3 +14,4 @@ export * from './transaction';
 export type * from './signature';
 export * from './user-input';
 export type * from './settings-page';
+export type * from './web-socket-event';

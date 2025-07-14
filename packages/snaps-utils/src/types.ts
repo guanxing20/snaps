@@ -1,13 +1,13 @@
+import { getErrorMessage } from '@metamask/snaps-sdk';
 import {
-  instance,
   is,
   optional,
   refine,
   size,
   string,
   type,
-  union,
   assert as assertSuperstruct,
+  StructError,
 } from '@metamask/superstruct';
 import type { Infer, Struct } from '@metamask/superstruct';
 import type { Json } from '@metamask/utils';
@@ -119,15 +119,18 @@ type UriOptions<Type extends string> = {
 };
 
 export const uri = (opts: UriOptions<any> = {}) =>
-  refine(union([string(), instance(URL)]), 'uri', (value) => {
+  refine(string(), 'uri', (value) => {
     try {
       const url = new URL(value);
 
       const UrlStruct = type(opts);
       assertSuperstruct(url, UrlStruct);
       return true;
-    } catch {
-      return `Expected URL, got "${value.toString()}".`;
+    } catch (error) {
+      if (error instanceof StructError) {
+        return getErrorMessage(error);
+      }
+      return `Expected URL, got "${value.toString()}"`;
     }
   });
 
@@ -141,7 +144,7 @@ export const uri = (opts: UriOptions<any> = {}) =>
 export function isValidUrl(
   url: unknown,
   opts: UriOptions<any> = {},
-): url is string | URL {
+): url is string {
   return is(url, uri(opts));
 }
 

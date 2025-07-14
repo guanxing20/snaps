@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [11.1.0]
+
+### Added
+
+- Add support for non-fungible assets to `endowment:assets` ([#3527](https://github.com/MetaMask/snaps/pull/3527))
+
+## [11.0.0]
+
+### Added
+
+- **BREAKING:** Market data is now fetched through `onAssetsMarketData` instead
+  of `onAssetConversion` ([#3496](https://github.com/MetaMask/snaps/pull/3496))
+  - Previously, `onAssetConversion` could return a `marketData` property, which
+    contained market data for the asset being converted. This property
+    has been removed, and `onAssetsMarketData` should be used instead.
+  - The `MarketDataStruct` is now replaced by the `FungibleAssetMarketDataStruct` struct.
+- Add `snap_trackError` method for error tracking through Sentry ([#3498](https://github.com/MetaMask/snaps/pull/3498))
+
+## [10.1.0]
+
+### Added
+
+- Add support for the `onWebSocketEvent` handler ([#3450](https://github.com/MetaMask/snaps/pull/3450), [#3459](https://github.com/MetaMask/snaps/pull/3459))
+- Add support for the `onStart` handler ([#3455](https://github.com/MetaMask/snaps/pull/3455))
+
+### Fixed
+
+- Fix unused permission detection for endowments with multiple handlers ([#3452](https://github.com/MetaMask/snaps/pull/3452))
+
+## [10.0.0]
+
+### Added
+
+- Support scheduling cronjobs with an ISO 8601 duration ([#3421](https://github.com/MetaMask/snaps/pull/3421))
+
+### Changed
+
+- **BREAKING:** Drop support for Node.js 18 and 21 ([#3447](https://github.com/MetaMask/snaps/pull/3447))
+
+### Fixed
+
+- Unwrap double-wrapped JSON-RPC errors ([#3432](https://github.com/MetaMask/snaps/pull/3432))
+
 ## [9.4.0]
 
 ### Added
@@ -623,7 +666,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The version of the package no longer needs to match the version of all other
     MetaMask Snaps packages.
 
-[Unreleased]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-utils@9.4.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-utils@11.1.0...HEAD
+[11.1.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-utils@11.0.0...@metamask/snaps-utils@11.1.0
+[11.0.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-utils@10.1.0...@metamask/snaps-utils@11.0.0
+[10.1.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-utils@10.0.0...@metamask/snaps-utils@10.1.0
+[10.0.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-utils@9.4.0...@metamask/snaps-utils@10.0.0
 [9.4.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-utils@9.3.0...@metamask/snaps-utils@9.4.0
 [9.3.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-utils@9.2.2...@metamask/snaps-utils@9.3.0
 [9.2.2]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-utils@9.2.1...@metamask/snaps-utils@9.2.2

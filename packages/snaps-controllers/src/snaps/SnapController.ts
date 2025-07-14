@@ -50,11 +50,14 @@ import type {
   ComponentOrElement,
   ContentType,
   OnAssetsLookupResponse,
-  FungibleAssetMetadata,
   OnAssetsConversionResponse,
   OnAssetsConversionArguments,
   AssetConversion,
   OnAssetsLookupArguments,
+  OnAssetsMarketDataArguments,
+  OnAssetsMarketDataResponse,
+  AssetMarketData,
+  AssetMetadata,
 } from '@metamask/snaps-sdk';
 import {
   AuxiliaryFileEncoding,
@@ -105,6 +108,7 @@ import {
   isValidUrl,
   OnAssetHistoricalPriceResponseStruct,
   OnAssetsConversionResponseStruct,
+  OnAssetsMarketDataResponseStruct,
 } from '@metamask/snaps-utils';
 import type {
   Json,
@@ -114,6 +118,7 @@ import type {
   JsonRpcRequest,
   Hex,
   SemVerVersion,
+  CaipAssetTypeOrId,
 } from '@metamask/utils';
 import {
   hexToNumber,
@@ -129,6 +134,7 @@ import {
   isValidSemVerRange,
   satisfiesVersionRange,
   timeSince,
+  createDeferredPromise,
 } from '@metamask/utils';
 import type { StateMachine } from '@xstate/fsm';
 import { createMachine, interpret } from '@xstate/fsm';
@@ -182,6 +188,7 @@ import {
   throttleTracking,
   withTimeout,
   isTrackableHandler,
+  isLocalSnapId,
 } from '../utils';
 
 export const controllerName = 'SnapController';
@@ -235,6 +242,11 @@ export type SnapRuntimeData = {
   startPromise: null | Promise<void>;
 
   /**
+   * A promise that resolves when the Snap has finished stopping
+   */
+  stopPromise: null | Promise<void>;
+
+  /**
    * A Unix timestamp for the last time the Snap received an RPC request
    */
   lastRequest: null | number;
@@ -272,11 +284,6 @@ export type SnapRuntimeData = {
    * Cached encryption salt used for state encryption.
    */
   encryptionSalt: string | null;
-
-  /**
-   * A boolean flag to determine whether the Snap is currently being stopped.
-   */
-  stopping: boolean;
 
   /**
    * Cached encrypted state of the Snap.
@@ -336,6 +343,15 @@ type PendingApproval = {
 };
 
 // Controller Messenger Actions
+
+/**
+ * Initialise the SnapController. This should be called after all controllers
+ * are created.
+ */
+export type SnapControllerInitAction = {
+  type: `${typeof controllerName}:init`;
+  handler: SnapController['init'];
+};
 
 /**
  * Gets the specified Snap from state.
@@ -469,6 +485,7 @@ export type SnapControllerGetStateAction = ControllerGetStateAction<
 >;
 
 export type SnapControllerActions =
+  | SnapControllerInitAction
   | ClearSnapState
   | GetSnap
   | GetSnapState
@@ -685,6 +702,14 @@ type FeatureFlags = {
   disableSnapInstallation?: boolean;
   rejectInvalidPlatformVersion?: boolean;
   useCaip25Permission?: boolean;
+
+  /**
+   * Force any local Snap to be treated as a preinstalled Snap.
+   *
+   * This should only be used for local testing, and should not be enabled in
+   * any production builds (including beta and Flask).
+   */
+  forcePreinstalledSnaps?: boolean;
 };
 
 type DynamicFeatureFlags = {
@@ -710,7 +735,7 @@ type SnapControllerArgs = {
   environmentEndowmentPermissions?: string[];
 
   /**
-   * Excluded permissions with its associated error message used to forbid certain permssions.
+   * Excluded permissions with its associated error message used to forbid certain permissions.
    */
   excludedPermissions?: Record<string, string>;
 
@@ -1160,6 +1185,11 @@ export class SnapController extends BaseController<
    */
   #registerMessageHandlers(): void {
     this.messagingSystem.registerActionHandler(
+      `${controllerName}:init`,
+      (...args) => this.init(...args),
+    );
+
+    this.messagingSystem.registerActionHandler(
       `${controllerName}:clearSnapState`,
       (...args) => this.clearSnapState(...args),
     );
@@ -1263,6 +1293,37 @@ export class SnapController extends BaseController<
       `${controllerName}:isMinimumPlatformVersion`,
       (...args) => this.isMinimumPlatformVersion(...args),
     );
+  }
+
+  /**
+   * Initialise the SnapController.
+   *
+   * Currently this method calls the `onStart` lifecycle hook for all
+   * installed Snaps.
+   */
+  init() {
+    const snaps = this.getRunnableSnaps();
+    for (const { id } of snaps) {
+      const hasLifecycleHooksEndowment = this.messagingSystem.call(
+        'PermissionController:hasPermission',
+        id,
+        SnapEndowments.LifecycleHooks,
+      );
+
+      if (!hasLifecycleHooksEndowment) {
+        continue;
+      }
+
+      this.#callLifecycleHook(METAMASK_ORIGIN, id, HandlerType.OnStart).catch(
+        (error) => {
+          logError(
+            `Error when calling \`onStart\` lifecycle hook for Snap "${id}": ${getErrorMessage(
+              error,
+            )}`,
+          );
+        },
+      );
+    }
   }
 
   #handlePreinstalledSnaps(preinstalledSnaps: PreinstalledSnap[]) {
@@ -1717,14 +1778,16 @@ export class SnapController extends BaseController<
       throw new Error(`The snap "${snapId}" is not running.`);
     }
 
-    // No-op if the Snap is already stopping.
-    if (runtime.stopping) {
+    // If we are already stopping, wait for that to finish.
+    if (runtime.stopPromise) {
+      await runtime.stopPromise;
       return;
     }
 
     // Flag that the Snap is actively stopping, this prevents other calls to stopSnap
     // while we are handling termination of the Snap
-    runtime.stopping = true;
+    const { promise, resolve } = createDeferredPromise();
+    runtime.stopPromise = promise;
 
     try {
       if (this.isRunning(snapId)) {
@@ -1736,10 +1799,11 @@ export class SnapController extends BaseController<
       runtime.lastRequest = null;
       runtime.pendingInboundRequests = [];
       runtime.pendingOutboundRequests = 0;
-      runtime.stopping = false;
+      runtime.stopPromise = null;
       if (this.isRunning(snapId)) {
         this.#transition(snapId, statusEvent);
       }
+      resolve();
     }
   }
 
@@ -3063,10 +3127,20 @@ export class SnapController extends BaseController<
           platformVersion: manifest.platformVersion,
         });
 
+        const preinstalledArgs =
+          this.#featureFlags.forcePreinstalledSnaps && isLocalSnapId(snapId)
+            ? {
+                preinstalled: true,
+                hideSnapBranding: true,
+                hidden: false,
+              }
+            : {};
+
         return this.#set({
           ...args,
           files: fetchedSnap,
           id: snapId,
+          ...preinstalledArgs,
         });
       })();
     }
@@ -3550,8 +3624,13 @@ export class SnapController extends BaseController<
 
     const timeout = this.#getExecutionTimeout(handlerPermissions);
 
+    const runtime = this.#getRuntimeExpect(snapId);
+
+    if (runtime.stopPromise) {
+      await runtime.stopPromise;
+    }
+
     if (!this.isRunning(snapId)) {
-      const runtime = this.#getRuntimeExpect(snapId);
       if (!runtime.startPromise) {
         runtime.startPromise = this.startSnap(snapId);
       }
@@ -3583,7 +3662,13 @@ export class SnapController extends BaseController<
       const result = await withTimeout(handleRpcRequestPromise, timer);
 
       if (result === hasTimedOut) {
-        throw new Error(`${snapId} failed to respond to the request in time.`);
+        const stopping =
+          runtime.stopPromise !== null || !this.isRunning(snapId);
+        throw new Error(
+          stopping
+            ? `${snapId} was stopped and the request was cancelled. This is likely because the Snap crashed.`
+            : `${snapId} failed to respond to the request in time.`,
+        );
       }
 
       await this.#assertSnapRpcResponse(snapId, handlerType, result);
@@ -3617,6 +3702,10 @@ export class SnapController extends BaseController<
       const [jsonRpcError, handled] = unwrapError(error);
 
       if (!handled) {
+        logError(
+          `"${snapId}" crashed due to an unhandled error:`,
+          jsonRpcError,
+        );
         await this.stopSnap(snapId, SnapStatusEvents.Crash);
       }
 
@@ -3721,6 +3810,14 @@ export class SnapController extends BaseController<
           },
           result as OnAssetsConversionResponse,
         );
+
+      case HandlerType.OnAssetsMarketData:
+        // We can cast since the request and result have already been validated.
+        return this.#transformOnAssetsMarketDataResult(
+          request as { params: OnAssetsMarketDataArguments },
+          result as OnAssetsMarketDataResponse,
+        );
+
       default:
         return result;
     }
@@ -3758,9 +3855,9 @@ export class SnapController extends BaseController<
     const { assets: requestedAssets } = requestedParams;
 
     const filteredAssets = Object.keys(assets).reduce<
-      Record<CaipAssetType, FungibleAssetMetadata | null>
+      Record<CaipAssetType, AssetMetadata | null>
     >((accumulator, assetType) => {
-      const castAssetType = assetType as CaipAssetType;
+      const castAssetType = assetType as CaipAssetTypeOrId;
       const isValid =
         scopes.some((scope) => castAssetType.startsWith(scope)) &&
         requestedAssets.includes(castAssetType);
@@ -3803,6 +3900,38 @@ export class SnapController extends BaseController<
       return accumulator;
     }, {});
     return { conversionRates: filteredConversionRates };
+  }
+
+  /**
+   * Transforms an RPC response coming from the `onAssetsMarketData` handler.
+   *
+   * This filters out responses that are out of scope for the Snap based on
+   * the incoming request.
+   *
+   * @param request - The request that returned the result.
+   * @param request.params - The parameters for the request.
+   * @param result - The result.
+   * @param result.marketData - The market data returned by the Snap.
+   * @returns The transformed result.
+   */
+  #transformOnAssetsMarketDataResult(
+    { params: requestedParams }: { params: OnAssetsMarketDataArguments },
+    { marketData }: OnAssetsMarketDataResponse,
+  ) {
+    const { assets: requestedAssets } = requestedParams;
+
+    const filteredMarketData = requestedAssets.reduce<
+      Record<CaipAssetTypeOrId, Record<CaipAssetType, AssetMarketData | null>>
+    >((accumulator, assets) => {
+      const result = marketData[assets.asset]?.[assets.unit];
+      // Only include rates that were actually requested.
+      if (result) {
+        accumulator[assets.asset] ??= {};
+        accumulator[assets.asset][assets.unit] = result;
+      }
+      return accumulator;
+    }, {});
+    return { marketData: filteredMarketData };
   }
 
   /**
@@ -3901,6 +4030,9 @@ export class SnapController extends BaseController<
         break;
       case HandlerType.OnAssetHistoricalPrice:
         assertStruct(result, OnAssetHistoricalPriceResponseStruct);
+        break;
+      case HandlerType.OnAssetsMarketData:
+        assertStruct(result, OnAssetsMarketDataResponseStruct);
         break;
       default:
         break;
@@ -4082,6 +4214,7 @@ export class SnapController extends BaseController<
     this.#snapsRuntimeData.set(snapId, {
       lastRequest: null,
       startPromise: null,
+      stopPromise: null,
       installPromise: null,
       encryptionKey: null,
       encryptionSalt: null,
@@ -4089,7 +4222,6 @@ export class SnapController extends BaseController<
       pendingInboundRequests: [],
       pendingOutboundRequests: 0,
       interpreter,
-      stopping: false,
       stateMutex: new Mutex(),
       getStateMutex: new Mutex(),
     });

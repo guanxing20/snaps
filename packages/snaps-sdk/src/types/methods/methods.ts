@@ -4,10 +4,15 @@ import type {
 } from './cancel-background-event';
 import type { ClearStateParams, ClearStateResult } from './clear-state';
 import type {
+  CloseWebSocketParams,
+  CloseWebSocketResult,
+} from './close-web-socket';
+import type {
   CreateInterfaceParams,
   CreateInterfaceResult,
 } from './create-interface';
 import type { DialogParams, DialogResult } from './dialog';
+import type { EndTraceParams, EndTraceResult } from './end-trace';
 import type {
   GetBackgroundEventsParams,
   GetBackgroundEventsResult,
@@ -50,6 +55,10 @@ import type {
 import type { GetSnapsParams, GetSnapsResult } from './get-snaps';
 import type { GetStateParams, GetStateResult } from './get-state';
 import type {
+  GetWebSocketsParams,
+  GetWebSocketsResult,
+} from './get-web-sockets';
+import type {
   InvokeKeyringParams,
   InvokeKeyringResult,
 } from './invoke-keyring';
@@ -64,6 +73,10 @@ import type {
 } from './manage-accounts';
 import type { ManageStateParams, ManageStateResult } from './manage-state';
 import type { NotifyParams, NotifyResult } from './notify';
+import type {
+  OpenWebSocketParams,
+  OpenWebSocketResult,
+} from './open-web-socket';
 import type { RequestSnapsParams, RequestSnapsResult } from './request-snaps';
 import type {
   ResolveInterfaceParams,
@@ -73,7 +86,13 @@ import type {
   ScheduleBackgroundEventParams,
   ScheduleBackgroundEventResult,
 } from './schedule-background-event';
+import type {
+  SendWebSocketMessageParams,
+  SendWebSocketMessageResult,
+} from './send-web-socket-message';
 import type { SetStateParams, SetStateResult } from './set-state';
+import type { StartTraceParams, StartTraceResult } from './start-trace';
+import type { TrackErrorParams, TrackErrorResult } from './track-error';
 import type { TrackEventParams, TrackEventResult } from './track-event';
 import type {
   UpdateInterfaceParams,
@@ -89,6 +108,7 @@ export type SnapMethods = {
   /* eslint-disable @typescript-eslint/naming-convention */
   snap_clearState: [ClearStateParams, ClearStateResult];
   snap_dialog: [DialogParams, DialogResult];
+  snap_endTrace: [EndTraceParams, EndTraceResult];
   snap_getBip32Entropy: [GetBip32EntropyParams, GetBip32EntropyResult];
   snap_getBip32PublicKey: [GetBip32PublicKeyParams, GetBip32PublicKeyResult];
   snap_getBip44Entropy: [GetBip44EntropyParams, GetBip44EntropyResult];
@@ -124,7 +144,16 @@ export type SnapMethods = {
   ];
   snap_resolveInterface: [ResolveInterfaceParams, ResolveInterfaceResult];
   snap_setState: [SetStateParams, SetStateResult];
+  snap_startTrace: [StartTraceParams, StartTraceResult];
   snap_trackEvent: [TrackEventParams, TrackEventResult];
+  snap_trackError: [TrackErrorParams, TrackErrorResult];
+  snap_openWebSocket: [OpenWebSocketParams, OpenWebSocketResult];
+  snap_closeWebSocket: [CloseWebSocketParams, CloseWebSocketResult];
+  snap_getWebSockets: [GetWebSocketsParams, GetWebSocketsResult];
+  snap_sendWebSocketMessage: [
+    SendWebSocketMessageParams,
+    SendWebSocketMessageResult,
+  ];
   wallet_getSnaps: [GetSnapsParams, GetSnapsResult];
   wallet_invokeKeyring: [InvokeKeyringParams, InvokeKeyringResult];
   wallet_invokeSnap: [InvokeSnapParams, InvokeSnapResult];

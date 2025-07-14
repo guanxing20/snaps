@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [10.1.0]
+
+### Added
+
+- Add non-fungible assets support to `onAssetsLookup` and `onAssetsMarketData` ([#3527](https://github.com/MetaMask/snaps/pull/3527))
+
+## [10.0.0]
+
+### Added
+
+- **BREAKING:** Market data is now fetched through `onAssetsMarketData` instead
+  of `onAssetConversion` ([#3496](https://github.com/MetaMask/snaps/pull/3496))
+  - Previously, `onAssetConversion` could return a `marketData` property, which
+    contained market data for the asset being converted. This property
+    has been removed, and `onAssetsMarketData` should be used instead.
+
+## [9.1.0]
+
+### Added
+
+- Add support for the `onWebSocketEvent` handler ([#3450](https://github.com/MetaMask/snaps/pull/3450))
+- Add support for the `onStart` handler ([#3455](https://github.com/MetaMask/snaps/pull/3455))
+
+## [9.0.0]
+
+### Changed
+
+- **BREAKING:** Drop support for Node.js 18 and 21 ([#3447](https://github.com/MetaMask/snaps/pull/3447))
+- Bump `ses` from `1.12.0` to `1.13.0` ([#3438](https://github.com/MetaMask/snaps/pull/3438))
+
 ## [8.2.0]
 
 ### Added
@@ -509,7 +539,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The version of the package no longer needs to match the version of all other
     MetaMask Snaps packages.
 
-[Unreleased]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-execution-environments@8.2.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-execution-environments@10.1.0...HEAD
+[10.1.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-execution-environments@10.0.0...@metamask/snaps-execution-environments@10.1.0
+[10.0.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-execution-environments@9.1.0...@metamask/snaps-execution-environments@10.0.0
+[9.1.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-execution-environments@9.0.0...@metamask/snaps-execution-environments@9.1.0
+[9.0.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-execution-environments@8.2.0...@metamask/snaps-execution-environments@9.0.0
 [8.2.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-execution-environments@8.1.0...@metamask/snaps-execution-environments@8.2.0
 [8.1.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-execution-environments@8.0.1...@metamask/snaps-execution-environments@8.1.0
 [8.0.1]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-execution-environments@8.0.0...@metamask/snaps-execution-environments@8.0.1

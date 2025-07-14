@@ -1,6 +1,6 @@
 {
   "name": "@metamask/snaps-sdk",
-  "version": "7.1.0",
+  "version": "9.2.0",
   "description": "A library containing the core functionality for building MetaMask Snaps",
   "keywords": [
     "MetaMask",
@@ -93,12 +93,12 @@
   "dependencies": {
     "@metamask/key-tree": "^10.1.1",
     "@metamask/providers": "^22.1.0",
-    "@metamask/rpc-errors": "^7.0.2",
+    "@metamask/rpc-errors": "^7.0.3",
     "@metamask/superstruct": "^3.2.1",
-    "@metamask/utils": "^11.4.0"
+    "@metamask/utils": "^11.4.2"
   },
   "devDependencies": {
-    "@lavamoat/allow-scripts": "^3.3.3",
+    "@lavamoat/allow-scripts": "^3.3.4",
     "@metamask/auto-changelog": "^5.0.2",
     "@ts-bridge/cli": "^0.6.1",
     "@types/jest": "^27.5.1",
@@ -115,7 +115,7 @@
     "typescript": "~5.3.3"
   },
   "engines": {
-    "node": "^18.16 || >=20"
+    "node": "^20 || >=22"
   },
   "publishConfig": {
     "access": "public",

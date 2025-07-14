@@ -69,7 +69,6 @@ import {
 import { hmac } from '@noble/hashes/hmac';
 import { sha512 } from '@noble/hashes/sha512';
 import { File } from 'buffer';
-import { webcrypto } from 'crypto';
 import fetchMock from 'jest-fetch-mock';
 import { pipeline } from 'readable-stream';
 import type { Duplex } from 'readable-stream';
@@ -122,14 +121,6 @@ import {
 } from '../test-utils';
 import { delay } from '../utils';
 
-if (!('CryptoKey' in globalThis)) {
-  // We can remove this once we drop Node 18
-  Object.defineProperty(globalThis, 'CryptoKey', {
-    value: webcrypto.CryptoKey,
-  });
-}
-
-globalThis.crypto ??= webcrypto as typeof globalThis.crypto;
 globalThis.crypto.getRandomValues = <Type extends ArrayBufferView | null>(
   array: Type,
 ) => {
@@ -1956,10 +1947,94 @@ describe('SnapController', () => {
     expect(results[0].status).toBe('fulfilled');
     expect(results[1].status).toBe('rejected');
     expect((results[1] as PromiseRejectedResult).reason.message).toBe(
-      `${snap.id} failed to respond to the request in time.`,
+      `${snap.id} was stopped and the request was cancelled. This is likely because the Snap crashed.`,
     );
 
     snapController.destroy();
+  });
+
+  it('can recover from crash and handle next request', async () => {
+    const { manifest, sourceCode, svgIcon } =
+      await getMockSnapFilesWithUpdatedChecksum({
+        sourceCode: `
+      module.exports.onRpcRequest = ({ request }) => {
+        if (request.method === "a") {
+          while(true) {}
+        } else {
+          return "foo";
+        }
+      };
+    `,
+      });
+
+    const rootMessenger = getControllerMessenger();
+    const [snapController, service] = getSnapControllerWithEES(
+      getSnapControllerWithEESOptions({
+        maxRequestTime: 50,
+        rootMessenger,
+        detectSnapLocation: loopbackDetect({
+          manifest,
+          files: [sourceCode, svgIcon as VirtualFile],
+        }),
+      }),
+    );
+
+    const spy = jest.spyOn(service, 'executeSnap');
+
+    await snapController.installSnaps(MOCK_ORIGIN, {
+      [MOCK_SNAP_ID]: {},
+    });
+
+    const snap = snapController.getExpect(MOCK_SNAP_ID);
+
+    expect(snapController.state.snaps[snap.id].status).toBe('running');
+
+    // @ts-expect-error Accessing protected value.
+    const originalTerminateFunction = service.terminateJob.bind(service);
+
+    let promise: Promise<unknown>;
+
+    // Cause a request at termination time.
+    // @ts-expect-error Accessing protected value.
+    service.terminateJob = async (args) => {
+      promise = snapController.handleRequest({
+        snapId: snap.id,
+        origin: MOCK_ORIGIN,
+        handler: HandlerType.OnRpcRequest,
+        request: {
+          jsonrpc: '2.0',
+          method: 'b',
+          params: {},
+          id: 2,
+        },
+      });
+      return originalTerminateFunction(args);
+    };
+
+    await expect(
+      snapController.handleRequest({
+        snapId: snap.id,
+        origin: MOCK_ORIGIN,
+        handler: HandlerType.OnRpcRequest,
+        request: {
+          jsonrpc: '2.0',
+          method: 'a',
+          params: {},
+          id: 1,
+        },
+      }),
+    ).rejects.toThrow(
+      'npm:@metamask/example-snap failed to respond to the request in time.',
+    );
+
+    expect(await promise).toBe('foo');
+
+    expect(spy).toHaveBeenCalledTimes(2);
+
+    // @ts-expect-error Accessing protected value.
+    service.terminateJob = originalTerminateFunction;
+    snapController.destroy();
+    await service.terminateAllSnaps();
   });
 
   it('does not kill snaps with open sessions', async () => {
@@ -4043,7 +4118,7 @@ describe('SnapController', () => {
           },
         }),
       ).rejects.toThrow(
-        `Assertion failed: At path: assets.foo -- Expected a value of type \`CaipAssetType\`, but received: \`"foo"\`.`,
+        `Assertion failed: At path: assets.foo -- Expected a value of type \`CaipAssetTypeOrId\`, but received: \`"foo"\`.`,
       );
 
       snapController.destroy();
@@ -4125,7 +4200,7 @@ describe('SnapController', () => {
       snapController.destroy();
     });
 
-    it('returns the value when `onAssetsLookup` returns a valid response', async () => {
+    it('returns the value when `onAssetsLookup` returns a valid response for fungible assets', async () => {
       const rootMessenger = getControllerMessenger();
       const messenger = getSnapControllerMessenger(rootMessenger);
       const snapController = getSnapController(
@@ -4211,6 +4286,126 @@ describe('SnapController', () => {
               },
             ],
           },
+        },
+      });
+
+      snapController.destroy();
+    });
+
+    it('returns the value when `onAssetsLookup` returns a valid response for non-fungible assets', async () => {
+      const rootMessenger = getControllerMessenger();
+      const messenger = getSnapControllerMessenger(rootMessenger);
+      const snapController = getSnapController(
+        getSnapControllerOptions({
+          messenger,
+          state: {
+            snaps: getPersistedSnapsState(),
+          },
+        }),
+      );
+
+      rootMessenger.registerActionHandler(
+        'PermissionController:getPermissions',
+        () => ({
+          [SnapEndowments.Assets]: {
+            caveats: [
+              {
+                type: SnapCaveatType.ChainIds,
+                value: ['solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'],
+              },
+            ],
+            date: 1664187844588,
+            id: 'izn0WGUO8cvq_jqvLQuQP',
+            invoker: MOCK_SNAP_ID,
+            parentCapability: SnapEndowments.Assets,
+          },
+        }),
+      );
+
+      rootMessenger.registerActionHandler(
+        'SubjectMetadataController:getSubjectMetadata',
+        () => MOCK_SNAP_SUBJECT_METADATA,
+      );
+
+      rootMessenger.registerActionHandler(
+        'ExecutionService:handleRpcRequest',
+        async () =>
+          Promise.resolve({
+            assets: {
+              'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/nft:Fz6LxeUg5qjesYX3BdmtTwyyzBtMxk644XiTqU5W3w9w':
+                {
+                  fungible: false,
+                  name: 'Persky Penguins #398',
+                  symbol: 'PENGUIN',
+                  imageUrl: `https://metamask.io/pinguin.svg`,
+                  description:
+                    'A nice penguin from the Persky Penguins collection.',
+                  acquiredAt: 1750941834,
+                  isPossibleSpam: false,
+                  attributes: {
+                    type: 'Alien',
+                    accessories: 'Headband',
+                    age: 32,
+                  },
+                  collection: {
+                    name: 'Persky Penguins',
+                    address:
+                      'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvd:Fz6LxeUg5qjesYX3BdmtTwyyzBtMxk644XiTqU5W3w9w',
+                    symbol: 'PENGUIN',
+                    tokenCount: 10000,
+                    creator:
+                      'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvd:Fz6LxeUg5qjesYX3BdmtTwyyzBtMxk644XiTqU5W3w9w',
+                    imageUrl: `https://metamask.io/pinguin.svg`,
+                  },
+                },
+            },
+          }),
+      );
+
+      expect(
+        await snapController.handleRequest({
+          snapId: MOCK_SNAP_ID,
+          origin: METAMASK_ORIGIN,
+          handler: HandlerType.OnAssetsLookup,
+          request: {
+            jsonrpc: '2.0',
+            method: ' ',
+            params: {
+              assets: [
+                'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/nft:Fz6LxeUg5qjesYX3BdmtTwyyzBtMxk644XiTqU5W3w9w',
+              ],
+            },
+            id: 1,
+          },
+        }),
+      ).toStrictEqual({
+        assets: {
+          'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/nft:Fz6LxeUg5qjesYX3BdmtTwyyzBtMxk644XiTqU5W3w9w':
+            {
+              fungible: false,
+              name: 'Persky Penguins #398',
+              symbol: 'PENGUIN',
+              imageUrl: `https://metamask.io/pinguin.svg`,
+              description:
+                'A nice penguin from the Persky Penguins collection.',
+              acquiredAt: 1750941834,
+              isPossibleSpam: false,
+              attributes: {
+                type: 'Alien',
+                accessories: 'Headband',
+                age: 32,
+              },
+              collection: {
+                name: 'Persky Penguins',
+                address:
+                  'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvd:Fz6LxeUg5qjesYX3BdmtTwyyzBtMxk644XiTqU5W3w9w',
+                symbol: 'PENGUIN',
+                tokenCount: 10000,
+                creator:
+                  'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvd:Fz6LxeUg5qjesYX3BdmtTwyyzBtMxk644XiTqU5W3w9w',
+                imageUrl: `https://metamask.io/pinguin.svg`,
+              },
+            },
         },
       });
 
@@ -4437,8 +4632,10 @@ describe('SnapController', () => {
 
       snapController.destroy();
     });
+  });
 
-    it('returns the value when `onAssetsConversion` returns a valid response with market data', async () => {
+  describe('onAssetsMarketData', () => {
+    it('throws if `onAssetsMarketData` handler returns an invalid response', async () => {
       const rootMessenger = getControllerMessenger();
       const messenger = getSnapControllerMessenger(rootMessenger);
       const snapController = getSnapController(
@@ -4477,19 +4674,72 @@ describe('SnapController', () => {
         'ExecutionService:handleRpcRequest',
         async () =>
           Promise.resolve({
-            conversionRates: {
+            marketData: { foo: {} },
+          }),
+      );
+
+      await expect(
+        snapController.handleRequest({
+          snapId: MOCK_SNAP_ID,
+          origin: METAMASK_ORIGIN,
+          handler: HandlerType.OnAssetsMarketData,
+          request: {
+            jsonrpc: '2.0',
+            method: ' ',
+            params: {},
+            id: 1,
+          },
+        }),
+      ).rejects.toThrow(
+        `Assertion failed: At path: marketData.foo -- Expected a value of type \`CaipAssetTypeOrId\`, but received: \`"foo"\`.`,
+      );
+
+      snapController.destroy();
+    });
+
+    it('filters out assets that are out of scope for `onAssetsMarketData`', async () => {
+      const rootMessenger = getControllerMessenger();
+      const messenger = getSnapControllerMessenger(rootMessenger);
+      const snapController = getSnapController(
+        getSnapControllerOptions({
+          messenger,
+          state: {
+            snaps: getPersistedSnapsState(),
+          },
+        }),
+      );
+
+      rootMessenger.registerActionHandler(
+        'PermissionController:getPermissions',
+        () => ({
+          [SnapEndowments.Assets]: {
+            caveats: [
+              {
+                type: SnapCaveatType.ChainIds,
+                value: ['bip122:000000000019d6689c085ae165831e93'],
+              },
+            ],
+            date: 1664187844588,
+            id: 'izn0WGUO8cvq_jqvLQuQP',
+            invoker: MOCK_SNAP_ID,
+            parentCapability: SnapEndowments.Assets,
+          },
+        }),
+      );
+
+      rootMessenger.registerActionHandler(
+        'SubjectMetadataController:getSubjectMetadata',
+        () => MOCK_SNAP_SUBJECT_METADATA,
+      );
+
+      rootMessenger.registerActionHandler(
+        'ExecutionService:handleRpcRequest',
+        async () =>
+          Promise.resolve({
+            marketData: {
               'bip122:000000000019d6689c085ae165831e93/slip44:0': {
-                'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501': {
-                  rate: '400',
-                  conversionTime: 1737548790,
-                  marketData: {
-                    marketCap: '123',
-                    totalVolume: '123',
-                    circulatingSupply: '123',
-                    allTimeHigh: '123',
-                    allTimeLow: '123',
-                    pricePercentChange: { all: 1.23 },
-                  },
+                'eip155:1/slip44:60': {
+                  fungible: true,
                 },
               },
             },
@@ -4500,38 +4750,227 @@ describe('SnapController', () => {
         await snapController.handleRequest({
           snapId: MOCK_SNAP_ID,
           origin: METAMASK_ORIGIN,
-          handler: HandlerType.OnAssetsConversion,
+          handler: HandlerType.OnAssetsMarketData,
           request: {
             jsonrpc: '2.0',
             method: ' ',
             params: {
-              conversions: [
+              assets: [
                 {
-                  from: 'bip122:000000000019d6689c085ae165831e93/slip44:0',
-                  to: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
+                  asset: 'bip122:000000000019d6689c085ae165831e93/slip44:0',
+                  unit: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
                 },
               ],
-              includeMarketData: true,
+            },
+            id: 1,
+          },
+        }),
+      ).toStrictEqual({ marketData: {} });
+
+      snapController.destroy();
+    });
+
+    it('returns the value when `onAssetsMarketData` returns a valid response for fungible assets', async () => {
+      const rootMessenger = getControllerMessenger();
+      const messenger = getSnapControllerMessenger(rootMessenger);
+      const snapController = getSnapController(
+        getSnapControllerOptions({
+          messenger,
+          state: {
+            snaps: getPersistedSnapsState(),
+          },
+        }),
+      );
+
+      rootMessenger.registerActionHandler(
+        'PermissionController:getPermissions',
+        () => ({
+          [SnapEndowments.Assets]: {
+            caveats: [
+              {
+                type: SnapCaveatType.ChainIds,
+                value: ['bip122:000000000019d6689c085ae165831e93'],
+              },
+            ],
+            date: 1664187844588,
+            id: 'izn0WGUO8cvq_jqvLQuQP',
+            invoker: MOCK_SNAP_ID,
+            parentCapability: SnapEndowments.Assets,
+          },
+        }),
+      );
+
+      rootMessenger.registerActionHandler(
+        'SubjectMetadataController:getSubjectMetadata',
+        () => MOCK_SNAP_SUBJECT_METADATA,
+      );
+
+      rootMessenger.registerActionHandler(
+        'ExecutionService:handleRpcRequest',
+        async () =>
+          Promise.resolve({
+            marketData: {
+              'bip122:000000000019d6689c085ae165831e93/slip44:0': {
+                'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501': {
+                  fungible: true,
+                  marketCap: '10000',
+                  totalVolume: '100000000',
+                },
+              },
+            },
+          }),
+      );
+
+      expect(
+        await snapController.handleRequest({
+          snapId: MOCK_SNAP_ID,
+          origin: METAMASK_ORIGIN,
+          handler: HandlerType.OnAssetsMarketData,
+          request: {
+            jsonrpc: '2.0',
+            method: ' ',
+            params: {
+              assets: [
+                {
+                  asset: 'bip122:000000000019d6689c085ae165831e93/slip44:0',
+                  unit: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
+                },
+              ],
             },
             id: 1,
           },
         }),
       ).toStrictEqual({
-        conversionRates: {
+        marketData: {
           'bip122:000000000019d6689c085ae165831e93/slip44:0': {
             'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501': {
-              rate: '400',
-              conversionTime: 1737548790,
-              marketData: {
-                marketCap: '123',
-                totalVolume: '123',
-                circulatingSupply: '123',
-                allTimeHigh: '123',
-                allTimeLow: '123',
-                pricePercentChange: { all: 1.23 },
-              },
+              fungible: true,
+              marketCap: '10000',
+              totalVolume: '100000000',
             },
           },
+        },
+      });
+
+      snapController.destroy();
+    });
+
+    it('returns the value when `onAssetsMarketData` returns a valid response for non-fungible assets', async () => {
+      const rootMessenger = getControllerMessenger();
+      const messenger = getSnapControllerMessenger(rootMessenger);
+      const snapController = getSnapController(
+        getSnapControllerOptions({
+          messenger,
+          state: {
+            snaps: getPersistedSnapsState(),
+          },
+        }),
+      );
+
+      rootMessenger.registerActionHandler(
+        'PermissionController:getPermissions',
+        () => ({
+          [SnapEndowments.Assets]: {
+            caveats: [
+              {
+                type: SnapCaveatType.ChainIds,
+                value: ['solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp'],
+              },
+            ],
+            date: 1664187844588,
+            id: 'izn0WGUO8cvq_jqvLQuQP',
+            invoker: MOCK_SNAP_ID,
+            parentCapability: SnapEndowments.Assets,
+          },
+        }),
+      );
+
+      rootMessenger.registerActionHandler(
+        'SubjectMetadataController:getSubjectMetadata',
+        () => MOCK_SNAP_SUBJECT_METADATA,
+      );
+
+      rootMessenger.registerActionHandler(
+        'ExecutionService:handleRpcRequest',
+        async () =>
+          Promise.resolve({
+            marketData: {
+              'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/nft:Fz6LxeUg5qjesYX3BdmtTwyyzBtMxk644XiTqU5W3w9w':
+                {
+                  'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501': {
+                    fungible: false,
+                    lastSale: {
+                      asset:
+                        'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/nft:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+                      amount: '123',
+                    },
+                    topBid: {
+                      asset:
+                        'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/nft:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+                      amount: '123',
+                    },
+                    floorPrice: {
+                      asset:
+                        'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/nft:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+                      amount: '123',
+                    },
+                    rarity: {
+                      ranking: { source: 'source', rank: 1 },
+                      metadata: { attribute1: 1, attribute2: 2 },
+                    },
+                  },
+                },
+            },
+          }),
+      );
+
+      expect(
+        await snapController.handleRequest({
+          snapId: MOCK_SNAP_ID,
+          origin: METAMASK_ORIGIN,
+          handler: HandlerType.OnAssetsMarketData,
+          request: {
+            jsonrpc: '2.0',
+            method: ' ',
+            params: {
+              assets: [
+                {
+                  asset:
+                    'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/nft:Fz6LxeUg5qjesYX3BdmtTwyyzBtMxk644XiTqU5W3w9w',
+                  unit: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501',
+                },
+              ],
+            },
+            id: 1,
+          },
+        }),
+      ).toStrictEqual({
+        marketData: {
+          'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/nft:Fz6LxeUg5qjesYX3BdmtTwyyzBtMxk644XiTqU5W3w9w':
+            {
+              'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/slip44:501': {
+                fungible: false,
+                lastSale: {
+                  asset:
+                    'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/nft:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+                  amount: '123',
+                },
+                topBid: {
+                  asset:
+                    'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/nft:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+                  amount: '123',
+                },
+                floorPrice: {
+                  asset:
+                    'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp/nft:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+                  amount: '123',
+                },
+                rarity: {
+                  ranking: { source: 'source', rank: 1 },
+                  metadata: { attribute1: 1, attribute2: 2 },
+                },
+              },
+            },
         },
       });
 
@@ -6865,7 +7304,7 @@ describe('SnapController', () => {
           [MOCK_SNAP_ID]: {},
         }),
       ).rejects.toThrow(
-        'A snap must request at least one of the following permissions: endowment:rpc, endowment:transaction-insight, endowment:cronjob, endowment:name-lookup, endowment:lifecycle-hooks, endowment:keyring, endowment:page-home, endowment:page-settings, endowment:signature-insight, endowment:assets, endowment:protocol.',
+        'A snap must request at least one of the following permissions: endowment:rpc, endowment:transaction-insight, endowment:cronjob, endowment:name-lookup, endowment:lifecycle-hooks, endowment:keyring, endowment:page-home, endowment:page-settings, endowment:signature-insight, endowment:assets, endowment:protocol, endowment:network-access.',
       );
 
       controller.destroy();
@@ -7913,6 +8352,82 @@ describe('SnapController', () => {
       ).rejects.toThrow(
         'Failed to fetch snap "npm:@metamask/example-snap": Failed to localize Snap manifest: Failed to translate "{{ proposedName }}": No translation found for "proposedName" in "en" file.',
       );
+
+      snapController.destroy();
+    });
+
+    it('installs a local Snap as preinstalled Snap when `forcePreinstalledSnaps` is enabled', async () => {
+      const messenger = getSnapControllerMessenger();
+      const snapController = getSnapController(
+        getSnapControllerOptions({
+          messenger,
+          detectSnapLocation: loopbackDetect(),
+          featureFlags: {
+            allowLocalSnaps: true,
+            forcePreinstalledSnaps: true,
+          },
+        }),
+      );
+
+      await snapController.installSnaps(MOCK_ORIGIN, {
+        [MOCK_LOCAL_SNAP_ID]: {},
+        [MOCK_SNAP_ID]: {},
+      });
+
+      const localSnap = snapController.getExpect(MOCK_LOCAL_SNAP_ID);
+      expect(localSnap.preinstalled).toBe(true);
+      expect(localSnap.hideSnapBranding).toBe(true);
+      expect(localSnap.hidden).toBe(false);
+
+      const npmSnap = snapController.getExpect(MOCK_SNAP_ID);
+      expect(npmSnap.preinstalled).toBeUndefined();
+      expect(npmSnap.hideSnapBranding).toBeUndefined();
+      expect(npmSnap.hidden).toBeUndefined();
+
+      snapController.destroy();
+    });
+
+    it('updates an existing local Snap to be a preinstalled Snap when `forcePreinstalledSnaps` is enabled', async () => {
+      const snapObject = getPersistedSnapObject({
+        id: MOCK_LOCAL_SNAP_ID,
+      });
+
+      const location = new LoopbackLocation({
+        manifest: snapObject.manifest,
+        shouldAlwaysReload: true,
+      });
+
+      const messenger = getSnapControllerMessenger();
+      const snapController = getSnapController(
+        getSnapControllerOptions({
+          messenger,
+          detectSnapLocation: loopbackDetect(location),
+          featureFlags: {
+            allowLocalSnaps: true,
+            forcePreinstalledSnaps: true,
+          },
+          state: {
+            snaps: {
+              [MOCK_LOCAL_SNAP_ID]: snapObject,
+            },
+          },
+        }),
+      );
+
+      const localSnapBeforeUpdate =
+        snapController.getExpect(MOCK_LOCAL_SNAP_ID);
+      expect(localSnapBeforeUpdate.preinstalled).toBeUndefined();
+      expect(localSnapBeforeUpdate.hideSnapBranding).toBeUndefined();
+      expect(localSnapBeforeUpdate.hidden).toBeUndefined();
+
+      await snapController.installSnaps(MOCK_ORIGIN, {
+        [MOCK_LOCAL_SNAP_ID]: {},
+      });
+
+      const localSnap = snapController.getExpect(MOCK_LOCAL_SNAP_ID);
+      expect(localSnap.preinstalled).toBe(true);
+      expect(localSnap.hideSnapBranding).toBe(true);
+      expect(localSnap.hidden).toBe(false);
 
       snapController.destroy();
     });
@@ -9814,6 +10329,127 @@ describe('SnapController', () => {
   });
 
   describe('SnapController actions', () => {
+    describe('SnapController:init', () => {
+      it('calls `onStart` for all Snaps with the `endowment:lifecycle-hooks` permission', async () => {
+        const rootMessenger = getControllerMessenger();
+        const messenger = getSnapControllerMessenger(rootMessenger);
+
+        rootMessenger.registerActionHandler(
+          'PermissionController:getPermissions',
+          (origin) => {
+            if (origin === MOCK_SNAP_ID) {
+              return {
+                [SnapEndowments.LifecycleHooks]:
+                  MOCK_LIFECYCLE_HOOKS_PERMISSION,
+              };
+            }
+
+            return {};
+          },
+        );
+
+        rootMessenger.registerActionHandler(
+          'PermissionController:hasPermission',
+          (origin) => {
+            return origin === MOCK_SNAP_ID;
+          },
+        );
+
+        const snapController = getSnapController(
+          getSnapControllerOptions({
+            messenger,
+            state: {
+              snaps: getPersistedSnapsState(
+                getPersistedSnapObject({
+                  id: MOCK_SNAP_ID,
+                }),
+                getPersistedSnapObject({
+                  id: MOCK_LOCAL_SNAP_ID,
+                }),
+              ),
+            },
+          }),
+        );
+
+        const call = jest.spyOn(messenger, 'call');
+        messenger.call('SnapController:init');
+        await sleep(10);
+
+        expect(call).toHaveBeenNthCalledWith(
+          2,
+          'PermissionController:hasPermission',
+          MOCK_SNAP_ID,
+          'endowment:lifecycle-hooks',
+        );
+
+        expect(call).toHaveBeenNthCalledWith(
+          6,
+          'ExecutionService:executeSnap',
+          expect.any(Object),
+        );
+
+        expect(messenger.call).toHaveBeenNthCalledWith(
+          7,
+          'ExecutionService:handleRpcRequest',
+          MOCK_SNAP_ID,
+          {
+            handler: HandlerType.OnStart,
+            origin: METAMASK_ORIGIN,
+            request: {
+              jsonrpc: '2.0',
+              id: expect.any(String),
+              method: HandlerType.OnStart,
+            },
+          },
+        );
+
+        snapController.destroy();
+      });
+
+      it('logs an error if the lifecycle hook throws', async () => {
+        const consoleErrorSpy = jest
+          .spyOn(console, 'error')
+          .mockImplementation();
+
+        const rootMessenger = getControllerMessenger();
+        const messenger = getSnapControllerMessenger(rootMessenger);
+
+        rootMessenger.registerActionHandler(
+          'PermissionController:getPermissions',
+          () => {
+            return {
+              [SnapEndowments.LifecycleHooks]: MOCK_LIFECYCLE_HOOKS_PERMISSION,
+            };
+          },
+        );
+
+        rootMessenger.registerActionHandler(
+          'ExecutionService:handleRpcRequest',
+          () => {
+            throw new Error('Test error in lifecycle hook.');
+          },
+        );
+
+        const snapController = getSnapController(
+          getSnapControllerOptions({
+            messenger,
+            state: {
+              snaps: getPersistedSnapsState(),
+            },
+          }),
+        );
+
+        messenger.call('SnapController:init');
+        await sleep(10);
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          `Error when calling \`onStart\` lifecycle hook for Snap "npm:@metamask/example-snap": Test error in lifecycle hook.`,
+        );
+
+        snapController.destroy();
+      });
+    });
+
     describe('SnapController:get', () => {
       it('gets a snap', () => {
         const messenger = getSnapControllerMessenger();
@@ -11171,11 +11807,6 @@ describe('SnapController', () => {
 
     it('supports hex encoding', async () => {
       fetchMock.disableMocks();
-
-      // We can remove this once we drop Node 18
-      Object.defineProperty(globalThis, 'File', {
-        value: File,
-      });
 
       // Because jest-fetch-mock replaces native fetch, we mock it here
       Object.defineProperty(globalThis, 'fetch', {

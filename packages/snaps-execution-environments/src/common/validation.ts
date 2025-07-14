@@ -1,6 +1,8 @@
 import { rpcErrors } from '@metamask/rpc-errors';
 import {
   InterfaceContextStruct,
+  literal as customLiteral,
+  typedUnion,
   UserInputEventStruct,
 } from '@metamask/snaps-sdk';
 import { HandlerType } from '@metamask/snaps-utils';
@@ -12,8 +14,8 @@ import {
   boolean,
   enums,
   is,
-  literal,
   nullable,
+  number,
   object,
   optional,
   record,
@@ -21,6 +23,7 @@ import {
   string,
   tuple,
   union,
+  literal,
 } from '@metamask/superstruct';
 import type {
   CaipChainId,
@@ -29,6 +32,7 @@ import type {
 } from '@metamask/utils';
 import {
   assertStruct,
+  CaipAssetTypeOrIdStruct,
   CaipAssetTypeStruct,
   CaipChainIdStruct,
   JsonRpcIdStruct,
@@ -252,8 +256,39 @@ export function assertIsOnAssetHistoricalPriceRequestArguments(
   assertRequestArguments(value, OnAssetHistoricalPriceRequestArgumentsStruct);
 }
 
+export const OnAssetsMarketDataRequestArgumentsStruct = object({
+  assets: size(
+    array(
+      object({
+        asset: CaipAssetTypeOrIdStruct,
+        unit: CaipAssetTypeStruct,
+      }),
+    ),
+    1,
+    Infinity,
+  ),
+});
+
+export type OnAssetsMarketDataRequestArguments = Infer<
+  typeof OnAssetsMarketDataRequestArgumentsStruct
+>;
+
+/**
+ * Asserts that the given value is a valid {@link OnAssetsMarketDataRequestArguments}
+ * object.
+ *
+ * @param value - The value to validate.
+ * @throws If the value is not a valid {@link OnAssetsMarketDataRequestArguments}
+ * object.
+ */
+export function assertIsOnAssetsMarketDataRequestArguments(
+  value: unknown,
+): asserts value is OnAssetsMarketDataRequestArguments {
+  assertRequestArguments(value, OnAssetsMarketDataRequestArgumentsStruct);
+}
+
 export const OnAssetsLookupRequestArgumentsStruct = object({
-  assets: size(array(CaipAssetTypeStruct), 1, Infinity),
+  assets: size(array(CaipAssetTypeOrIdStruct), 1, Infinity),
 });
 
 export type OnAssetsLookupRequestArguments = Infer<
@@ -285,7 +320,6 @@ export const OnAssetsConversionRequestArgumentsStruct = object({
     1,
     Infinity,
   ),
-  includeMarketData: optional(boolean()),
 });
 
 export type OnAssetsConversionRequestArguments = Infer<
@@ -349,6 +383,65 @@ export function assertIsOnProtocolRequestArguments(
   value: unknown,
 ): asserts value is OnProtocolRequestArguments {
   assertRequestArguments(value, OnProtocolRequestArgumentsStruct);
+}
+
+const WebSocketOpenEventStruct = object({
+  type: customLiteral('open'),
+  id: string(),
+  origin: string(),
+});
+
+const WebSocketCloseEventStruct = object({
+  type: customLiteral('close'),
+  id: string(),
+  origin: string(),
+  code: number(),
+  reason: nullable(string()),
+  wasClean: nullable(boolean()),
+});
+
+const WebSocketMessageEventStruct = object({
+  type: customLiteral('message'),
+  id: string(),
+  origin: string(),
+  data: typedUnion([
+    object({
+      type: customLiteral('text'),
+      message: string(),
+    }),
+    object({
+      type: customLiteral('binary'),
+      message: array(number()),
+    }),
+  ]),
+});
+
+export const WebSocketEventStruct = typedUnion([
+  WebSocketOpenEventStruct,
+  WebSocketCloseEventStruct,
+  WebSocketMessageEventStruct,
+]);
+
+export const OnWebSocketEventArgumentsStruct = object({
+  event: WebSocketEventStruct,
+});
+
+export type OnWebSocketEventArguments = Infer<
+  typeof OnWebSocketEventArgumentsStruct
+>;
+
+/**
+ * Asserts that the given value is a valid {@link OnWebSocketEventArguments}
+ * object.
+ *
+ * @param value - The value to validate.
+ * @throws If the value is not a valid {@link OnWebSocketEventArguments}
+ * object.
+ */
+export function assertIsOnWebSocketEventArguments(
+  value: unknown,
+): asserts value is OnWebSocketEventArguments {
+  assertRequestArguments(value, OnWebSocketEventArgumentsStruct);
 }
 
 // TODO: Either fix this lint violation or explain why it's necessary to ignore.

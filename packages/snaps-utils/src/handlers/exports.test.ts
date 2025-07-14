@@ -21,6 +21,7 @@ describe('SNAP_EXPORT_NAMES', () => {
       'onCronjob',
       'onInstall',
       'onUpdate',
+      'onStart',
       'onNameLookup',
       'onKeyringRequest',
       'onHomePage',
@@ -29,8 +30,10 @@ describe('SNAP_EXPORT_NAMES', () => {
       'onAssetsLookup',
       'onAssetsConversion',
       'onAssetHistoricalPrice',
+      'onAssetsMarketData',
       'onProtocolRequest',
       'onClientRequest',
+      'onWebSocketEvent',
     ]);
   });
 });

@@ -121,6 +121,7 @@ export const handlerEndowments: Record<HandlerType, string | null> = {
   [HandlerType.OnNameLookup]: nameLookupEndowmentBuilder.targetName,
   [HandlerType.OnInstall]: lifecycleHooksEndowmentBuilder.targetName,
   [HandlerType.OnUpdate]: lifecycleHooksEndowmentBuilder.targetName,
+  [HandlerType.OnStart]: lifecycleHooksEndowmentBuilder.targetName,
   [HandlerType.OnKeyringRequest]: keyringEndowmentBuilder.targetName,
   [HandlerType.OnHomePage]: homePageEndowmentBuilder.targetName,
   [HandlerType.OnSettingsPage]: settingsPageEndowmentBuilder.targetName,
@@ -129,8 +130,10 @@ export const handlerEndowments: Record<HandlerType, string | null> = {
   [HandlerType.OnAssetHistoricalPrice]: assetsEndowmentBuilder.targetName,
   [HandlerType.OnAssetsLookup]: assetsEndowmentBuilder.targetName,
   [HandlerType.OnAssetsConversion]: assetsEndowmentBuilder.targetName,
+  [HandlerType.OnAssetsMarketData]: assetsEndowmentBuilder.targetName,
   [HandlerType.OnProtocolRequest]: protocolEndowmentBuilder.targetName,
   [HandlerType.OnClientRequest]: null,
+  [HandlerType.OnWebSocketEvent]: networkAccessEndowmentBuilder.targetName,
 };
 
 export * from './enum';

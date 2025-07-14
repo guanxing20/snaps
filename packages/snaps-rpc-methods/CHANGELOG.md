@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [13.3.0]
+
+### Added
+
+- Add middleware for automatically granting EVM permissions to preinstalled Snaps ([#3410](https://github.com/MetaMask/snaps/pull/3410))
+- Add `snap_startTrace` and `snap_endTrace` methods for performance tracing ([#3519](https://github.com/MetaMask/snaps/pull/3519))
+
+## [13.2.0]
+
+### Added
+
+- Add `snap_trackError` method for error tracking through Sentry ([#3498](https://github.com/MetaMask/snaps/pull/3498))
+- Add support for `onAssetsMarketData` handler ([#3496](https://github.com/MetaMask/snaps/pull/3496))
+
+## [13.1.0]
+
+### Added
+
+- Add RPC methods for WebSockets ([#3450](https://github.com/MetaMask/snaps/pull/3450), [#3459](https://github.com/MetaMask/snaps/pull/3459))
+- Add `onStart` to lifecycle hooks endowment ([#3455](https://github.com/MetaMask/snaps/pull/3455))
+
+## [13.0.0]
+
+### Changed
+
+- **BREAKING:** Drop support for Node.js 18 and 21 ([#3447](https://github.com/MetaMask/snaps/pull/3447))
+- **BREAKING:** Refactor background event methods to reduce duplication ([#3421](https://github.com/MetaMask/snaps/pull/3421))
+  - This requires `@metamask/snaps-controllers` version `13.0.0` or later.
+
 ## [12.4.0]
 
 ### Added
@@ -447,7 +476,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The version of the package no longer needs to match the version of all other
     MetaMask Snaps packages.
 
-[Unreleased]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-rpc-methods@12.4.0...HEAD
+[Unreleased]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-rpc-methods@13.3.0...HEAD
+[13.3.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-rpc-methods@13.2.0...@metamask/snaps-rpc-methods@13.3.0
+[13.2.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-rpc-methods@13.1.0...@metamask/snaps-rpc-methods@13.2.0
+[13.1.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-rpc-methods@13.0.0...@metamask/snaps-rpc-methods@13.1.0
+[13.0.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-rpc-methods@12.4.0...@metamask/snaps-rpc-methods@13.0.0
 [12.4.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-rpc-methods@12.3.0...@metamask/snaps-rpc-methods@12.4.0
 [12.3.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-rpc-methods@12.2.0...@metamask/snaps-rpc-methods@12.3.0
 [12.2.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-rpc-methods@12.1.0...@metamask/snaps-rpc-methods@12.2.0

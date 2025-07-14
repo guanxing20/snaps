@@ -7,6 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [14.1.0]
+
+### Added
+
+- Add support for non-fungible assets to `endowment:assets` ([#3527](https://github.com/MetaMask/snaps/pull/3527))
+- Add feature flag to treat local Snaps as preinstalled ([#3523](https://github.com/MetaMask/snaps/pull/3523))
+
+## [14.0.2]
+
+### Fixed
+
+- Clear cronjobs properly for local Snaps ([#3514](https://github.com/MetaMask/snaps/pull/3514))
+- Improve error message for cancelled requests when a Snap is stopped ([#3518](https://github.com/MetaMask/snaps/pull/3518))
+- Improve execution service error messages ([#3521](https://github.com/MetaMask/snaps/pull/3521))
+- Ensure Snap gets half of allocated initialization time ([#3522](https://github.com/MetaMask/snaps/pull/3522))
+
+## [14.0.1]
+
+### Fixed
+
+- Handle scheduled events close to current time gracefully ([#3510](https://github.com/MetaMask/snaps/pull/3510))
+
+## [14.0.0]
+
+### Added
+
+- Add support for `onAssetsMarketData` handler ([#3496](https://github.com/MetaMask/snaps/pull/3496))
+
+### Changed
+
+- **BREAKING:** Move `CronjobController` init to separate function ([#3507](https://github.com/MetaMask/snaps/pull/3507))
+
+## [13.1.1]
+
+### Fixed
+
+- Always delete socket when `close` is emitted ([#3465](https://github.com/MetaMask/snaps/pull/3465))
+- Add missing boilerplate to `WebSocketService` ([#3464](https://github.com/MetaMask/snaps/pull/3464))
+
+## [13.1.0]
+
+### Added
+
+- Add `WebSocketService` for WebSockets support ([#3450](https://github.com/MetaMask/snaps/pull/3450))
+  - This service must be instantiated to invoke `onWebSocketEvent` when WebSocket
+    messages are received.
+- Add `SnapController:init` to support `onStart` handler ([#3455](https://github.com/MetaMask/snaps/pull/3455))
+  - This function should be called when the client has been fully started.
+
+## [13.0.0]
+
+### Changed
+
+- **BREAKING:** Drop support for Node.js 18 and 21 ([#3447](https://github.com/MetaMask/snaps/pull/3447))
+- **BREAKING:** Refactor cronjob controller to reduce duplication ([#3421](https://github.com/MetaMask/snaps/pull/3421))
+  - The `jobs` state property was removed in favour of the `events` property,
+    which now contains all background events and cronjobs.
+  - `CronjobController:schedule` now expects a `schedule` field instead of
+    `date`.
+  - Some actions were renamed to remove the `BackgroundEvent` suffix:
+    - `CronjobController:scheduleBackgroundEvent` ->
+      `CronjobController:schedule`.
+    - `CronjobController:cancelBackgroundEvent` -> `CronjobController:cancel`.
+    - `CronjobController:getBackgroundEvents` -> `CronjobController:get`.
+
+### Fixed
+
+- Log errors that cause a crash ([#3443](https://github.com/MetaMask/snaps/pull/3443))
+- Recover from a crash more gracefully ([#3440](https://github.com/MetaMask/snaps/pull/3440))
+  - This resolves possible race conditions when sending requests to a Snap
+    that is in the process of being stopped.
+
 ## [12.3.1]
 
 ### Fixed
@@ -786,7 +858,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The version of the package no longer needs to match the version of all other
     MetaMask Snaps packages.
 
-[Unreleased]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-controllers@12.3.1...HEAD
+[Unreleased]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-controllers@14.1.0...HEAD
+[14.1.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-controllers@14.0.2...@metamask/snaps-controllers@14.1.0
+[14.0.2]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-controllers@14.0.1...@metamask/snaps-controllers@14.0.2
+[14.0.1]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-controllers@14.0.0...@metamask/snaps-controllers@14.0.1
+[14.0.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-controllers@13.1.1...@metamask/snaps-controllers@14.0.0
+[13.1.1]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-controllers@13.1.0...@metamask/snaps-controllers@13.1.1
+[13.1.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-controllers@13.0.0...@metamask/snaps-controllers@13.1.0
+[13.0.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-controllers@12.3.1...@metamask/snaps-controllers@13.0.0
 [12.3.1]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-controllers@12.3.0...@metamask/snaps-controllers@12.3.1
 [12.3.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-controllers@12.2.0...@metamask/snaps-controllers@12.3.0
 [12.2.0]: https://github.com/MetaMask/snaps/compare/@metamask/snaps-controllers@12.1.0...@metamask/snaps-controllers@12.2.0

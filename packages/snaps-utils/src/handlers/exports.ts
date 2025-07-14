@@ -2,6 +2,7 @@ import type {
   OnAssetHistoricalPriceHandler,
   OnAssetsConversionHandler,
   OnAssetsLookupHandler,
+  OnAssetsMarketDataHandler,
   OnClientRequestHandler,
   OnCronjobHandler,
   OnHomePageHandler,
@@ -12,9 +13,11 @@ import type {
   OnRpcRequestHandler,
   OnSettingsPageHandler,
   OnSignatureHandler,
+  OnStartHandler,
   OnTransactionHandler,
   OnUpdateHandler,
   OnUserInputHandler,
+  OnWebSocketEventHandler,
 } from '@metamask/snaps-sdk';
 
 import { HandlerType } from './types';
@@ -59,6 +62,13 @@ export const SNAP_EXPORTS = {
     type: HandlerType.OnUpdate,
     required: false,
     validator: (snapExport: unknown): snapExport is OnUpdateHandler => {
+      return typeof snapExport === 'function';
+    },
+  },
+  [HandlerType.OnStart]: {
+    type: HandlerType.OnStart,
+    required: false,
+    validator: (snapExport: unknown): snapExport is OnStartHandler => {
       return typeof snapExport === 'function';
     },
   },
@@ -122,6 +132,15 @@ export const SNAP_EXPORTS = {
       return typeof snapExport === 'function';
     },
   },
+  [HandlerType.OnAssetsMarketData]: {
+    type: HandlerType.OnAssetsMarketData,
+    required: true,
+    validator: (
+      snapExport: unknown,
+    ): snapExport is OnAssetsMarketDataHandler => {
+      return typeof snapExport === 'function';
+    },
+  },
   [HandlerType.OnProtocolRequest]: {
     type: HandlerType.OnProtocolRequest,
     required: true,
@@ -135,6 +154,13 @@ export const SNAP_EXPORTS = {
     type: HandlerType.OnClientRequest,
     required: true,
     validator: (snapExport: unknown): snapExport is OnClientRequestHandler => {
+      return typeof snapExport === 'function';
+    },
+  },
+  [HandlerType.OnWebSocketEvent]: {
+    type: HandlerType.OnWebSocketEvent,
+    required: true,
+    validator: (snapExport: unknown): snapExport is OnWebSocketEventHandler => {
       return typeof snapExport === 'function';
     },
   },

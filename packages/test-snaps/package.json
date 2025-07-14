@@ -1,6 +1,6 @@
 {
   "name": "@metamask/test-snaps",
-  "version": "2.23.1",
+  "version": "2.26.0",
   "private": true,
   "description": "The test snaps website for MetaMask Snaps, used for end-to-end testing",
   "keywords": [
@@ -45,6 +45,7 @@
     "@metamask/bip32-example-snap": "workspace:^",
     "@metamask/bip44-example-snap": "workspace:^",
     "@metamask/client-status-example-snap": "workspace:^",
+    "@metamask/cronjob-duration-example-snap": "workspace:^",
     "@metamask/cronjob-example-snap": "workspace:^",
     "@metamask/dialog-example-snap": "workspace:^",
     "@metamask/error-example-snap": "workspace:^",
@@ -72,7 +73,7 @@
     "@metamask/signature-insights-example-snap": "workspace:^",
     "@metamask/snaps-sdk": "workspace:^",
     "@metamask/snaps-utils": "workspace:^",
-    "@metamask/utils": "^11.4.0",
+    "@metamask/utils": "^11.4.2",
     "@metamask/wasm-example-snap": "workspace:^",
     "@popperjs/core": "^2.11.8",
     "@reduxjs/toolkit": "^1.9.5",
@@ -86,8 +87,8 @@
     "@metamask/auto-changelog": "^5.0.2",
     "@metamask/providers": "^22.1.0",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.10",
-    "@swc/core": "1.3.78",
-    "@swc/jest": "^0.2.26",
+    "@swc/core": "1.11.31",
+    "@swc/jest": "^0.2.38",
     "@types/jest": "^27.5.1",
     "@types/node": "18.14.2",
     "@types/react-refresh": "^0",
@@ -98,7 +99,7 @@
     "deepmerge": "^4.2.2",
     "depcheck": "^1.4.7",
     "eslint": "^9.11.0",
-    "favicons": "^7.1.2",
+    "favicons": "^7.2.0",
     "favicons-webpack-plugin": "^6.0.0",
     "html-webpack-plugin": "^5.5.0",
     "jest": "^29.0.2",
@@ -107,16 +108,16 @@
     "prettier": "^3.3.3",
     "react-refresh": "^0.17.0",
     "style-loader": "^3.3.2",
-    "swc-loader": "^0.2.3",
+    "swc-loader": "^0.2.6",
     "terser-webpack-plugin": "^5.3.9",
     "ts-node": "^10.9.1",
     "tsconfig-paths-webpack-plugin": "^4.0.1",
     "typescript": "~5.3.3",
     "webpack": "^5.97.1",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.15.1"
+    "webpack-dev-server": "^5.2.1"
   },
   "engines": {
-    "node": "^18.16 || >=20"
+    "node": "^20 || >=22"
   }
 }
